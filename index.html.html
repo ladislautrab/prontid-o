@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Gerencial · Parada P-70</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0b0f15; font-family: 'Inter', sans-serif; color: #e8edf5; padding: 24px 28px; line-height: 1.5; min-height: 100vh; }
+    .dashboard { max-width: 1600px; margin: 0 auto; }
+
+    /* HEADER */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid #1f2a3a; flex-wrap: wrap; gap: 14px; }
+    .header-left h1 { font-size: 24px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .header-left h1 i { color: #22c55e; font-size: 26px; }
+    .header-left .subtitle { color: #8b9bb4; font-size: 13px; margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge { background: #1a2332; color: #9ab0d0; padding: 3px 10px; border-radius: 100px; font-size: 11px; border: 1px solid #2a3a50; }
+    .upload-btn { background: #22c55e; color: #0b0f15; border: none; padding: 10px 20px; border-radius: 10px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: .2s; box-shadow: 0 4px 14px #22c55e30; }
+    .upload-btn:hover { background: #16a34a; transform: translateY(-1px); }
+    #fileInput { display: none; }
+
+    /* KPI GRID */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 8px; }
+    .kpi-card { background: #111a26; border: 1px solid #1f2a3a; border-radius: 14px; padding: 18px 16px; transition: .2s; position: relative; overflow: hidden; cursor: pointer; user-select: none; }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--accent, #3b82f6); opacity: .8; }
+    .kpi-card:hover { border-color: #2e405c; background: #141f2e; transform: translateY(-1px); }
+    .kpi-card.active { border-color: #22c55e; background: #141f2e; box-shadow: 0 0 0 1px #22c55e40, 0 4px 12px #22c55e15; }
+    .kpi-card.active::before { background: #22c55e; opacity: 1; }
+    .kpi-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #7a8da8; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; line-height: 1.3; }
+    .kpi-card .value { font-size: 26px; font-weight: 700; color: #fff; line-height: 1.1; }
+    .kpi-card .value small { font-size: 13px; font-weight: 500; color: #8b9bb4; letter-spacing: 0; margin-left: 3px; }
+    .kpi-card .sub { font-size: 11px; color: #5e728c; margin-top: 4px; }
+    .kpi-card .filter-indicator { position: absolute; top: 10px; right: 12px; font-size: 9px; color: #22c55e; font-weight: 700; text-transform: uppercase; opacity: 0; transition: .2s; letter-spacing: 0.4px; }
+    .kpi-card.active .filter-indicator { opacity: 1; }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: linear-gradient(90deg, transparent, #1f2a3a 10%, #2e405c 50%, #1f2a3a 90%, transparent); margin: 26px 0; position: relative; }
+    .divider::after { content: ''; position: absolute; left: 50%; top: -3px; transform: translateX(-50%); width: 6px; height: 6px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e80; }
+
+    /* SECTION TITLE */
+    .section-title { font-size: 14px; font-weight: 600; color: #cbd9f0; margin: 0 0 14px 0; display: flex; align-items: center; gap: 10px; }
+    .section-title i { color: #22c55e; font-size: 15px; width: 18px; }
+    .section-title .line { flex: 1; height: 1px; background: #1f2a3a; margin-left: 4px; }
+
+    /* CHART */
+    .chart-card { background: #111a26; border: 1px solid #1f2a3a; border-radius: 16px; padding: 22px 24px; margin-bottom: 8px; }
+    .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+    .chart-header h3 { font-size: 15px; font-weight: 600; color: #cbd9f0; display: flex; align-items: center; gap: 8px; }
+    .chart-header h3 i { color: #22c55e; }
+    .chart-badge { background: #1a2332; color: #8b9bb4; padding: 4px 12px; border-radius: 100px; font-size: 11px; border: 1px solid #2a3a50; }
+    .chart-container { position: relative; height: 420px; width: 100%; }
+
+    /* FILTER NOTIFICATION */
+    .filter-notification { display: none; background: #1a2332; border: 1px solid #22c55e40; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; font-size: 12px; color: #b0c4de; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .filter-notification.visible { display: flex; }
+    .filter-notification i { color: #22c55e; }
+    .filter-notification .tag { background: #22c55e15; color: #22c55e; padding: 2px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+    .filter-notification .tag button { background: none; border: none; color: #22c55e; cursor: pointer; margin-left: 4px; font-size: 11px; }
+    .btn-clear { background: #1a2332; border: 1px solid #2a3a50; color: #8b9bb4; padding: 9px 16px; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .btn-clear:hover { background: #222f42; color: #e8edf5; }
+
+    /* TABLE */
+    .table-card { background: #111a26; border: 1px solid #1f2a3a; border-radius: 16px; padding: 22px 24px; margin-bottom: 8px; }
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .table-header h3 { font-size: 15px; font-weight: 600; color: #cbd9f0; display: flex; align-items: center; gap: 8px; }
+    .table-header h3 i { color: #22c55e; }
+    .table-wrap { max-height: 460px; overflow: auto; border-radius: 10px; border: 1px solid #1f2a3a; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+    thead th { position: sticky; top: 0; background: #16212f; color: #9ab0d0; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; padding: 0; border-bottom: 1px solid #2a3a50; z-index: 3; }
+    tbody td { padding: 9px 12px; border-bottom: 1px solid #18212e; color: #cbd9f0; }
+    tbody tr:nth-child(even) { background: #0e1621; }
+    tbody tr:hover { background: #17212f; }
+    .cell-num { text-align: right; font-variant-numeric: tabular-nums; }
+    .cell-reg { font-weight: 600; color: #e8edf5; }
+    .empty-row td { text-align: center; color: #5e728c; padding: 24px; }
+    .status-pill { display: inline-block; padding: 2px 9px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; }
+    .status-aprovado { background: #22c55e20; color: #22c55e; }
+    .status-cancelado { background: #ef444420; color: #ef4444; }
+    .status-outro { background: #3b82f620; color: #7aa7f0; }
+
+    /* HEADER DE COLUNA COM FILTRO */
+    .th-inner { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 11px 12px; }
+    .th-filter-btn { background: none; border: none; color: #5e728c; cursor: pointer; padding: 3px 5px; border-radius: 5px; font-size: 10px; transition: .15s; line-height: 1; }
+    .th-filter-btn:hover { background: #223149; color: #cbd9f0; }
+    .th-filter-btn.has-filter { color: #22c55e; background: #22c55e15; }
+    thead th.has-filter-col { background: #17281f; }
+
+    /* DROPDOWN DE FILTRO */
+    .filter-dropdown { position: fixed; background: #141f2e; border: 1px solid #2a3a50; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.55); width: 260px; z-index: 1000; display: none; flex-direction: column; overflow: hidden; max-height: 340px; }
+    .filter-dropdown.open { display: flex; }
+    .fd-search { padding: 8px 10px; border-bottom: 1px solid #1f2a3a; flex: 0 0 auto; }
+    .fd-search input { width: 100%; background: #0e1621; border: 1px solid #2a3a50; border-radius: 7px; color: #e8edf5; font-family: 'Inter', sans-serif; font-size: 12px; padding: 7px 9px; outline: none; }
+    .fd-search input:focus { border-color: #22c55e; }
+    .fd-list { flex: 1 1 auto; min-height: 0; max-height: 220px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+    .fd-list::-webkit-scrollbar { width: 8px; }
+    .fd-list::-webkit-scrollbar-track { background: #0e1621; }
+    .fd-list::-webkit-scrollbar-thumb { background: #2e405c; border-radius: 100px; }
+    .fd-list::-webkit-scrollbar-thumb:hover { background: #3a5070; }
+    .fd-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #cbd9f0; }
+    .fd-item:hover { background: #1c2a3d; }
+    .fd-item input { accent-color: #22c55e; cursor: pointer; flex: 0 0 auto; }
+    .fd-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fd-actions { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #1f2a3a; background: #101a26; flex: 0 0 auto; }
+    .fd-actions button { flex: 1; background: #1a2332; border: 1px solid #2a3a50; color: #9ab0d0; padding: 6px 8px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; cursor: pointer; }
+    .fd-actions button:hover { background: #223149; color: #e8edf5; }
+    .fd-actions button.primary { background: #22c55e; border-color: #22c55e; color: #0b0f15; }
+    .fd-actions button.primary:hover { background: #16a34a; }
+
+    /* FOOTER */
+    .footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #1f2a3a; display: flex; justify-content: space-between; font-size: 11px; color: #4a5c74; flex-wrap: wrap; gap: 8px; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0b0f15; }
+    ::-webkit-scrollbar-thumb { background: #1f2a3a; border-radius: 100px; }
+
+    @media (max-width: 900px) { body { padding: 16px; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } .chart-container { height: 320px; } }
+    @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } .chart-container { height: 260px; } }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1><i class="fas fa-chart-simple"></i> Dashboard Gerencial · Parada P-70</h1>
+      <div class="subtitle">
+        <span>2ª Parada – Compromisso</span>
+        <span class="badge"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>2023 → 2026</span>
+        <span class="badge" id="rowCountBadge"><i class="fas fa-database" style="margin-right:4px;"></i>0 registros</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="upload-btn" id="uploadBtn"><i class="fas fa-cloud-upload-alt"></i> Upload Planilha</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+    </div>
+  </div>
+
+  <!-- NOTIFICAÇÃO FILTRO ATIVO -->
+  <div class="filter-notification" id="filterNotification">
+    <i class="fas fa-filter"></i>
+    <span>Filtros ativos:</span>
+    <span id="filterTags"></span>
+    <button class="btn-clear" id="clearCardFilter" style="margin-left:auto; padding:4px 12px; font-size:11px;">
+      <i class="fas fa-times"></i> Limpar tudo
+    </button>
+  </div>
+
+  <!-- GRUPO 1: CARDS PRINCIPAIS -->
+  <div class="kpi-grid" id="kpiGridTop">
+    <div class="kpi-card" style="--accent:#3b82f6;" data-filter-type="total" data-filter-key="">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-clipboard-list" style="color:#3b82f6;"></i> Total de Registro</div>
+      <div class="value" id="kpiTotal">0</div>
+      <div class="sub">Coluna A · total geral</div>
+    </div>
+    <div class="kpi-card" style="--accent:#22c55e;" data-filter-type="aprovado" data-filter-key="APROVADO">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-check-circle" style="color:#22c55e;"></i> Registros Aprovados</div>
+      <div class="value" id="kpiAprovado">0</div>
+      <div class="sub">Col. B = "Aprovado"</div>
+    </div>
+    <div class="kpi-card" style="--accent:#06b6d4;" data-filter-type="cadastrado" data-filter-key="">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-user-check" style="color:#06b6d4;"></i> Registros Cadastrados</div>
+      <div class="value" id="kpiCadastrado">0</div>
+      <div class="sub">Col. BQ (Numero LM) ≠ "Não cadastrado"</div>
+    </div>
+    <div class="kpi-card" style="--accent:#a855f7;" data-filter-type="prontidao" data-filter-key="BS">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-boxes-stacked" style="color:#a855f7;"></i> Prontidão de Material</div>
+      <div class="value" id="kpiProntidao">0<small>%</small></div>
+      <div class="sub">Média Col. BS (prontidao) · somente &gt; 0</div>
+    </div>
+  </div>
+
+  <!-- DIVISÓRIA 1 -->
+  <div class="divider"></div>
+
+  <!-- GRÁFICO -->
+  <div class="section-title"><i class="fas fa-chart-bar"></i> Distribuição por Serviço Padrão <span class="line"></span></div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3><i class="fas fa-chart-bar" style="color:#22c55e;"></i> Serviço Padrão (Coluna H)</h3>
+      <span class="chart-badge" id="chartBadge">0 categorias</span>
+    </div>
+    <div class="chart-container"><canvas id="servicoChart"></canvas></div>
+  </div>
+
+  <!-- DIVISÓRIA 2 -->
+  <div class="divider"></div>
+
+  <!-- GRUPO 2: DEMAIS CARDS -->
+  <div class="section-title"><i class="fas fa-cubes"></i> Indicadores de Suprimento & Execução <span class="line"></span></div>
+  <div class="kpi-grid" id="kpiGridBottom">
+    <div class="kpi-card" style="--accent:#06b6d4;" data-filter-type="montagem" data-filter-key="BT">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-wrench" style="color:#06b6d4;"></i> Total Montagem</div>
+      <div class="value" id="kpiMontagem">0</div>
+      <div class="sub">Soma Col. BT</div>
+    </div>
+    <div class="kpi-card" style="--accent:#f59e0b;" data-filter-type="fabricacao" data-filter-key="BU">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-industry" style="color:#f59e0b;"></i> Total de Fabricação</div>
+      <div class="value" id="kpiFabricacao">0</div>
+      <div class="sub">Soma Col. BU</div>
+    </div>
+    <div class="kpi-card" style="--accent:#8b5cf6;" data-filter-type="recebido" data-filter-key="BV">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-box-open" style="color:#8b5cf6;"></i> Total de Recebido</div>
+      <div class="value" id="kpiRecebido">0</div>
+      <div class="sub">Soma Col. BV</div>
+    </div>
+    <div class="kpi-card" style="--accent:#22c55e;" data-filter-type="integrado" data-filter-key="BW">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-link" style="color:#22c55e;"></i> Total de Integrados</div>
+      <div class="value" id="kpiIntegrado">0</div>
+      <div class="sub">Soma Col. BW</div>
+    </div>
+    <div class="kpi-card" style="--accent:#ef4444;" data-filter-type="cancelado" data-filter-key="BX">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-ban" style="color:#ef4444;"></i> Total de Cancelados</div>
+      <div class="value" id="kpiCancelado">0</div>
+      <div class="sub">Soma Col. BX</div>
+    </div>
+    <div class="kpi-card" style="--accent:#f59e0b;" data-filter-type="parcial" data-filter-key="BY">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-adjust" style="color:#f59e0b;"></i> Total de Parcial</div>
+      <div class="value" id="kpiParcial">0</div>
+      <div class="sub">Soma Col. BY</div>
+    </div>
+    <div class="kpi-card" style="--accent:#ec4899;" data-filter-type="transferencia" data-filter-key="CA">
+      <div class="filter-indicator">FILTRO ATIVO</div>
+      <div class="label"><i class="fas fa-exchange-alt" style="color:#ec4899;"></i> Transferência em Andamento</div>
+      <div class="value" id="kpiTransferencia">0</div>
+      <div class="sub">Soma Col. CA</div>
+    </div>
+  </div>
+
+  <!-- DIVISÓRIA 3 -->
+  <div class="divider"></div>
+
+  <!-- TABELA DETALHADA -->
+  <div class="section-title"><i class="fas fa-table"></i> Detalhamento dos Registros <span class="line"></span></div>
+  <div class="table-card">
+    <div class="table-header">
+      <h3><i class="fas fa-list-ul" style="color:#22c55e;"></i> Registros filtrados</h3>
+      <span class="chart-badge" id="tableCountBadge">0 linhas</span>
+    </div>
+    <div class="table-wrap">
+      <table id="detailTable">
+        <thead>
+          <tr id="detailTableHead"></tr>
+        </thead>
+        <tbody id="detailTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span><i class="fas fa-database" style="margin-right:5px;"></i>Fonte: analise.xlsx · Planilha2</span>
+    <span><i class="fas fa-chart-line" style="margin-right:5px;"></i>Dashboard Gerencial · Parada P-70</span>
+  </div>
+
+</div>
+
+<!-- DROPDOWN DE FILTRO DE COLUNA (único, reposicionado dinamicamente) -->
+<div class="filter-dropdown" id="colFilterDropdown">
+  <div class="fd-search">
+    <input type="text" id="fdSearchInput" placeholder="Buscar valor...">
+  </div>
+  <div class="fd-list" id="fdList"></div>
+  <div class="fd-actions">
+    <button id="fdClearBtn">Limpar</button>
+    <button id="fdApplyBtn" class="primary">Aplicar</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Registrar plugin de datalabels do Chart.js
+   ============================================================ */
+Chart.register(ChartDataLabels);
+
+/* ============================================================
+   Definição das colunas da tabela detalhada
+   ============================================================ */
+const TABLE_COLUMNS = [
+  { key: 'A',  label: 'Nº Registro',               numeric: false, reg: true },
+  { key: 'B',  label: 'Situação',                  numeric: false, status: true },
+  { key: 'BR', label: 'Numero LM',                 numeric: false },
+  { key: 'BS', label: 'Prontidão',                 numeric: true  },
+  { key: 'BT', label: 'Montagem',                  numeric: true  },
+  { key: 'BU', label: 'Fabricação',                numeric: true  },
+  { key: 'BV', label: 'Recebido',                  numeric: true  },
+  { key: 'BW', label: 'Integrado',                 numeric: true  },
+  { key: 'BX', label: 'Cancelado',                 numeric: true  },
+  { key: 'BY', label: 'Atendido Parcial',          numeric: true  },
+  { key: 'BZ', label: 'Saldo',                     numeric: true  },
+  { key: 'CC', label: 'Transferência em Verificação', numeric: true },
+  { key: 'CD', label: 'Data Prevista',             numeric: false },
+  { key: 'CE', label: 'Observação',                numeric: false }
+];
+
+/* ============================================================
+   SAMPLE DATA (demo)
+   ============================================================ */
+const SAMPLE_DATA = [
+  { A:'257977', B:'APROVADO', C:'Inspeção de vaso', D:'Básico', H:'INSPEÇÃO DE EQUIPAMENTOS (SPIE/NR-13)', I:'Mecânica', AL:'Vasos de Pressão', AG:'B - Não Postergável', LM:'Não cadastrado', BR:'Não cadastrado', BS:0, BT:0, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'258035', B:'APROVADO', C:'Modificação de linha', D:'Básico', H:'PROJETO DE MODIFICAÇÃO (GM/SMP)', I:'Projetos', AL:'Tubulação', AG:'A - Não Postergável', LM:'PP 2026', BR:'PP 2026', BS:0.6, BT:0, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'2026-03-10', CE:'Aguardando material' },
+  { A:'258115', B:'APROVADO', C:'Requisito ANP', D:'Básico', H:'REQUISITO LEGAL - ANP', I:'Segurança', AL:'Instrumentação', AG:'C - Postergável', LM:'Não cadastrado', BR:'Não cadastrado', BS:0, BT:0, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'258396', B:'APROVADO', C:'Troca de válvulas', D:'Básico', H:'MANUTENÇÃO/SUBSTITUIÇÃO DE VÁLVULAS MANUAIS', I:'Mecânica', AL:'Válvulas', AG:'C - Postergável', LM:'P4 - OPORTUNIDADE', BR:'P4 - OPORTUNIDADE', BS:0, BT:1, BU:1, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'2026-02-15', CE:'' },
+  { A:'258397', B:'APROVADO', C:'Troca de válvulas', D:'Básico', H:'MANUTENÇÃO/SUBSTITUIÇÃO DE VÁLVULAS MANUAIS', I:'Mecânica', AL:'Válvulas', AG:'C - Postergável', LM:'P4 - OPORTUNIDADE', BR:'P4 - OPORTUNIDADE', BS:0, BT:1, BU:1, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'2026-02-15', CE:'' },
+  { A:'258399', B:'APROVADO', C:'Troca de válvulas instr.', D:'Básico', H:'MANUTENÇÃO/SUBSTITUIÇÃO DE VÁLVULAS INSTRUMENTADAS', I:'Instrumentação', AL:'Válvulas', AG:'C - Postergável', LM:'P4', BR:'P4', BS:0, BT:1, BU:1, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'2026-02-20', CE:'' },
+  { A:'258402', B:'APROVADO', C:'Troca de válvulas instr.', D:'Básico', H:'MANUTENÇÃO/SUBSTITUIÇÃO DE VÁLVULAS INSTRUMENTADAS', I:'Instrumentação', AL:'Válvulas', AG:'C - Postergável', LM:'', BR:'', BS:0.666666, BT:0, BU:1, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'308523', B:'APROVADO', C:'Manutenção geral', D:'Detalhado', H:'MANUTENÇÃO GERAL', I:'Mecânica', AL:'Equipamentos', AG:'C - Postergável', LM:'Não cadastrado', BR:'Não cadastrado', BS:0, BT:0, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'319444', B:'APROVADO', C:'Recomendação ZR', D:'Detalhado', H:'INTEGRIDADE - Recomendações de Inspeção (Notas ZR)', I:'Inspeção', AL:'Integridade', AG:'B - Não Postergável', LM:'', BR:'', BS:1, BT:1, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'2026-01-30', CE:'Concluído' },
+  { A:'364509', B:'CANCELADO', C:'Calibração PSV', D:'Detalhado', H:'CALIBRAÇÃO/MANUTENÇÃO/SUBSTITUIÇÃO DE PSV', I:'Instrumentação', AL:'PSV', AG:'B - Não Postergável', LM:'PP 2026', BR:'PP 2026', BS:0, BT:0, BU:0, BV:0, BW:0, BX:1, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'Cancelado pelo cliente' },
+  { A:'369221', B:'APROVADO', C:'Requisito ANP', D:'Detalhado', H:'REQUISITO LEGAL - ANP', I:'Segurança', AL:'Instrumentação', AG:'C - Postergável', LM:'PP 2026', BR:'PP 2026', BS:1, BT:1, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'2026-04-01', CE:'' },
+  { A:'386394', B:'APROVADO', C:'Calibração PSV', D:'Detalhado', H:'CALIBRAÇÃO/MANUTENÇÃO/SUBSTITUIÇÃO DE PSV', I:'Instrumentação', AL:'PSV', AG:'C - Postergável', LM:'', BR:'', BS:0.666666, BT:9, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'386945', B:'APROVADO', C:'Requisito ANP', D:'Detalhado', H:'REQUISITO LEGAL - ANP', I:'Segurança', AL:'Instrumentação', AG:'B - Não Postergável', LM:'', BR:'', BS:0.444444, BT:9, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'415830', B:'APROVADO', C:'Recomendação ZR', D:'Detalhado', H:'INTEGRIDADE - Recomendações de Inspeção (Notas ZR)', I:'Inspeção', AL:'Integridade', AG:'C - Postergável', LM:'', BR:'', BS:0.333333, BT:4, BU:2, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'424222', B:'APROVADO', C:'Recomendação ZR', D:'Detalhado', H:'INTEGRIDADE - Recomendações de Inspeção (Notas ZR)', I:'Inspeção', AL:'Integridade', AG:'B - Não Postergável', LM:'', BR:'', BS:1, BT:1, BU:0, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'425439', B:'APROVADO', C:'Abrangência B14', D:'Detalhado', H:'Abrangência B14', I:'Mecânica', AL:'Tubulação', AG:'C - Postergável', LM:'', BR:'', BS:0.25, BT:5, BU:3, BV:0, BW:0, BX:0, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' },
+  { A:'450739', B:'CANCELADO', C:'Inspeção equipamentos', D:'Fora do Prazo', H:'INSPEÇÃO DE EQUIPAMENTOS (SPIE/NR-13)', I:'Inspeção', AL:'Vasos de Pressão', AG:'B - Não Postergável', LM:'Não cadastrado', BR:'Não cadastrado', BS:0, BT:0, BU:0, BV:0, BW:0, BX:1, BY:0, BZ:0, CA:0, CC:0, CD:'', CE:'' }
+];
+
+// ===== ESTADO GLOBAL =====
+let rawData = SAMPLE_DATA.slice();
+let filteredData = rawData.slice();
+let chartInstance = null;
+let activeCardFilter = null;
+let activeBarFilter = null;
+let columnFilters = {};
+
+// ===== ELEMENTOS =====
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const rowCountBadge = document.getElementById('rowCountBadge');
+const filterNotification = document.getElementById('filterNotification');
+const filterTags = document.getElementById('filterTags');
+const clearCardFilterBtn = document.getElementById('clearCardFilter');
+const kpiCards = document.querySelectorAll('.kpi-card');
+const detailTableHead = document.getElementById('detailTableHead');
+const detailTableBody = document.getElementById('detailTableBody');
+const tableCountBadge = document.getElementById('tableCountBadge');
+const colFilterDropdown = document.getElementById('colFilterDropdown');
+const fdSearchInput = document.getElementById('fdSearchInput');
+const fdList = document.getElementById('fdList');
+const fdClearBtn = document.getElementById('fdClearBtn');
+const fdApplyBtn = document.getElementById('fdApplyBtn');
+
+let dropdownState = { columnKey: null, selected: new Set(), anchorEl: null, allOptions: [] };
+
+// ===== UTILITÁRIOS =====
+function norm(txt) {
+  return (txt || '').toString().trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+function isCadastrado(row) {
+  const lm = norm(row.LM || row.BR);
+  return lm !== '' && lm !== 'nao cadastrado';
+}
+function fmtNum(n) {
+  if (n === undefined || n === null || isNaN(n)) return '0';
+  return n.toLocaleString('pt-BR');
+}
+function fmtDecimal(n) {
+  if (n === undefined || n === null || isNaN(n)) return '0';
+  return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+function fmtCellNum(v) {
+  if (v === undefined || v === null || v === '' || isNaN(v)) return '—';
+  const n = Number(v);
+  if (n === 0) return '0';
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+function escapeHtml(s) {
+  return (s ?? '').toString()
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function getRowVal(row, key) {
+  let v = row[key];
+  if (key === 'BR' && (v === undefined || v === '')) v = row.LM;
+  if (key === 'CC' && (v === undefined || v === '')) v = row.CA;
+  return v;
+}
+function displayVal(v) {
+  if (v === undefined || v === null || v === '') return '(vazio)';
+  return String(v);
+}
+
+// ===== APLICAR FILTROS (card + barra + colunas) =====
+function applyFilters() {
+  let data = rawData.slice();
+
+  if (activeCardFilter) {
+    const { type } = activeCardFilter;
+    data = data.filter(row => {
+      if (type === 'aprovado') return norm(row.B) === 'aprovado';
+      if (type === 'cadastrado') return isCadastrado(row);
+      if (type === 'prontidao') return (Number(row.BS) || 0) > 0;
+      if (type === 'cancelado') return (Number(row.BX) || 0) > 0;
+      if (type === 'parcial') return (Number(row.BY) || 0) > 0;
+      if (type === 'transferencia') return (Number(row.CC || row.CA) || 0) > 0;
+      if (type === 'montagem') return (Number(row.BT) || 0) > 0;
+      if (type === 'fabricacao') return (Number(row.BU) || 0) > 0;
+      if (type === 'recebido') return (Number(row.BV) || 0) > 0;
+      if (type === 'integrado') return (Number(row.BW) || 0) > 0;
+      return true;
+    });
+  }
+
+  if (activeBarFilter) {
+    data = data.filter(row => {
+      const serv = (row.H || 'Não informado').trim() || 'Não informado';
+      return serv === activeBarFilter;
+    });
+  }
+
+  Object.keys(columnFilters).forEach(key => {
+    const set = columnFilters[key];
+    if (!set || set.size === 0) return;
+    data = data.filter(row => set.has(displayVal(getRowVal(row, key))));
+  });
+
+  filteredData = data;
+  renderDashboard();
+}
+
+// ===== RENDER KPIs =====
+function renderKPIs() {
+  const total = rawData.length;
+  const aprovados = filteredData.filter(r => norm(r.B) === 'aprovado').length;
+  const cadastrados = filteredData.filter(r => isCadastrado(r)).length;
+
+  const bsValidos = filteredData.map(r => Number(r.BS) || 0).filter(v => v > 0);
+  let mediaProntidao = 0;
+  if (bsValidos.length > 0) {
+    const soma = bsValidos.reduce((a, b) => a + b, 0);
+    mediaProntidao = (soma / bsValidos.length) * 100;
+  }
+
+  const sumKey = (key) => filteredData.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+
+  document.getElementById('kpiTotal').textContent = fmtNum(total);
+  document.getElementById('kpiAprovado').textContent = fmtNum(aprovados);
+  document.getElementById('kpiCadastrado').textContent = fmtNum(cadastrados);
+  document.getElementById('kpiProntidao').innerHTML = `${fmtDecimal(mediaProntidao)}<small>%</small>`;
+  document.getElementById('kpiMontagem').textContent = fmtNum(sumKey('BT'));
+  document.getElementById('kpiFabricacao').textContent = fmtNum(sumKey('BU'));
+  document.getElementById('kpiRecebido').textContent = fmtNum(sumKey('BV'));
+  document.getElementById('kpiIntegrado').textContent = fmtNum(sumKey('BW'));
+  document.getElementById('kpiCancelado').textContent = fmtNum(sumKey('BX'));
+  document.getElementById('kpiParcial').textContent = fmtNum(sumKey('BY'));
+  document.getElementById('kpiTransferencia').textContent = fmtNum(sumKey('CC') || sumKey('CA'));
+
+  rowCountBadge.innerHTML = `<i class="fas fa-database" style="margin-right:4px;"></i>${total} registros`;
+}
+
+// ===== RENDER GRÁFICO =====
+function renderChart() {
+  const baseData = filteredData.length ? filteredData : rawData;
+  const counts = {};
+  baseData.forEach(row => {
+    const serv = (row.H || 'Não informado').trim() || 'Não informado';
+    counts[serv] = (counts[serv] || 0) + 1;
+  });
+
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  let labels, values;
+  if (entries.length > 15) {
+    const top = entries.slice(0, 15);
+    const rest = entries.slice(15).reduce((acc, [, v]) => acc + v, 0);
+    labels = [...top.map(e => e[0]), 'Outros'];
+    values = [...top.map(e => e[1]), rest];
+  } else {
+    labels = entries.map(e => e[0]);
+    values = entries.map(e => e[1]);
+  }
+
+  const backgroundColors = labels.map(label =>
+    activeBarFilter && label === activeBarFilter ? 'rgba(34, 197, 94, 1)' : 'rgba(34, 197, 94, 0.45)'
+  );
+  const borderColors = labels.map(label =>
+    activeBarFilter && label === activeBarFilter ? '#22c55e' : 'rgba(34, 197, 94, 0.6)'
+  );
+
+  const ctx = document.getElementById('servicoChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Quantidade',
+        data: values,
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.7,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 50 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#111a26', titleColor: '#e8edf5', bodyColor: '#b0c4de',
+          borderColor: '#2a3a50', borderWidth: 1, padding: 10, cornerRadius: 8,
+          callbacks: { label: (context) => ` ${context.parsed.x} registro(s)` }
+        },
+        datalabels: {
+          anchor: 'end', align: 'right', offset: 6, color: '#22c55e',
+          font: { family: 'Inter, sans-serif', size: 12, weight: 700 },
+          formatter: (value) => value,
+          backgroundColor: 'rgba(34, 197, 94, 0.12)', borderRadius: 6,
+          padding: { top: 3, bottom: 3, left: 8, right: 8 }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#1f2a3a', drawBorder: false }, ticks: { color: '#7a8da8', font: { size: 11 } }, beginAtZero: true },
+        y: {
+          grid: { display: false },
+          ticks: {
+            color: '#b0c4de', font: { size: 11 },
+            callback: function(value) {
+              const label = this.getLabelForValue(value);
+              return label.length > 45 ? label.substring(0, 45) + '…' : label;
+            }
+          }
+        }
+      },
+      onClick: (event, elements) => {
+        if (elements.length > 0) {
+          const index = elements[0].index;
+          const clickedLabel = labels[index];
+          if (clickedLabel === 'Outros') return;
+          activeBarFilter = (activeBarFilter === clickedLabel) ? null : clickedLabel;
+          applyFilters();
+        }
+      },
+      onHover: (event, elements) => {
+        event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      }
+    }
+  });
+
+  document.getElementById('chartBadge').textContent = `${entries.length} categoria(s)`;
+}
+
+// ===== RENDER TABELA =====
+function renderTable() {
+  detailTableHead.innerHTML = TABLE_COLUMNS.map(col => {
+    const active = columnFilters[col.key] && columnFilters[col.key].size > 0;
+    return `<th class="${active ? 'has-filter-col' : ''}">
+      <div class="th-inner">
+        <span>${escapeHtml(col.label)}</span>
+        <button class="th-filter-btn ${active ? 'has-filter' : ''}"
+                data-col-key="${col.key}"
+                title="Filtrar ${escapeHtml(col.label)}">
+          <i class="fas fa-filter"></i>
+        </button>
+      </div>
+    </th>`;
+  }).join('');
+
+  detailTableHead.querySelectorAll('.th-filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openColumnFilter(btn.dataset.colKey, btn);
+    });
+  });
+
+  if (!filteredData.length) {
+    detailTableBody.innerHTML = `<tr class="empty-row"><td colspan="${TABLE_COLUMNS.length}">
+      <i class="fas fa-inbox" style="margin-right:6px;"></i> Nenhum registro para os filtros atuais.
+    </td></tr>`;
+    tableCountBadge.textContent = '0 linhas';
+    return;
+  }
+
+  const rows = filteredData.map(row => {
+    return '<tr>' + TABLE_COLUMNS.map(col => {
+      const raw = getRowVal(row, col.key);
+
+      if (col.reg) return `<td class="cell-reg">${escapeHtml(raw ?? '—') || '—'}</td>`;
+
+      if (col.status) {
+        const n = norm(raw);
+        let cls = 'status-outro';
+        if (n === 'aprovado') cls = 'status-aprovado';
+        else if (n === 'cancelado') cls = 'status-cancelado';
+        return `<td><span class="status-pill ${cls}">${escapeHtml(raw || '—')}</span></td>`;
+      }
+
+      if (col.numeric) return `<td class="cell-num">${fmtCellNum(raw)}</td>`;
+
+      return `<td>${escapeHtml(raw ?? '—') || '—'}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+
+  detailTableBody.innerHTML = rows;
+  tableCountBadge.textContent = `${filteredData.length} linha(s)`;
+}
+
+// ===== DROPDOWN DE FILTRO POR COLUNA =====
+function openColumnFilter(colKey, anchorEl) {
+  if (dropdownState.columnKey === colKey && colFilterDropdown.classList.contains('open')) {
+    closeColumnFilter();
+    return;
+  }
+
+  dropdownState.columnKey = colKey;
+  dropdownState.anchorEl = anchorEl;
+
+  let baseForOptions = rawData.slice();
+  if (activeCardFilter) {
+    const { type } = activeCardFilter;
+    baseForOptions = baseForOptions.filter(row => {
+      if (type === 'aprovado') return norm(row.B) === 'aprovado';
+      if (type === 'cadastrado') return isCadastrado(row);
+      if (type === 'prontidao') return (Number(row.BS) || 0) > 0;
+      if (type === 'cancelado') return (Number(row.BX) || 0) > 0;
+      if (type === 'parcial') return (Number(row.BY) || 0) > 0;
+      if (type === 'transferencia') return (Number(row.CC || row.CA) || 0) > 0;
+      if (type === 'montagem') return (Number(row.BT) || 0) > 0;
+      if (type === 'fabricacao') return (Number(row.BU) || 0) > 0;
+      if (type === 'recebido') return (Number(row.BV) || 0) > 0;
+      if (type === 'integrado') return (Number(row.BW) || 0) > 0;
+      return true;
+    });
+  }
+  if (activeBarFilter) {
+    baseForOptions = baseForOptions.filter(row => {
+      const serv = (row.H || 'Não informado').trim() || 'Não informado';
+      return serv === activeBarFilter;
+    });
+  }
+  Object.keys(columnFilters).forEach(k => {
+    if (k === colKey) return;
+    const set = columnFilters[k];
+    if (!set || set.size === 0) return;
+    baseForOptions = baseForOptions.filter(row => set.has(displayVal(getRowVal(row, k))));
+  });
+
+  const unique = new Set();
+  baseForOptions.forEach(row => unique.add(displayVal(getRowVal(row, colKey))));
+  const options = Array.from(unique).sort((a, b) =>
+    a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })
+  );
+
+  const current = columnFilters[colKey];
+  const selected = current ? new Set(current) : new Set(options);
+
+  dropdownState.selected = selected;
+  dropdownState.allOptions = options;
+
+  renderDropdownList(options, selected, '');
+
+  const rect = anchorEl.getBoundingClientRect();
+  const ddWidth = 260;
+  let left = rect.left;
+  if (left + ddWidth > window.innerWidth - 10) left = window.innerWidth - ddWidth - 10;
+  let top = rect.bottom + 6;
+  const maxTop = window.innerHeight - 60;
+  if (top > maxTop) top = Math.max(10, rect.top - 320);
+
+  colFilterDropdown.style.left = left + 'px';
+  colFilterDropdown.style.top = top + 'px';
+  colFilterDropdown.classList.add('open');
+
+  fdSearchInput.value = '';
+  setTimeout(() => fdSearchInput.focus(), 30);
+}
+
+function closeColumnFilter() {
+  colFilterDropdown.classList.remove('open');
+  dropdownState.columnKey = null;
+  dropdownState.anchorEl = null;
+}
+
+function renderDropdownList(options, selected, query) {
+  const q = norm(query);
+  const filtered = q ? options.filter(o => norm(o).includes(q)) : options;
+
+  if (!filtered.length) {
+    fdList.innerHTML = `<div style="padding:10px;color:#5e728c;font-size:12px;">Nenhum valor encontrado.</div>`;
+    return;
+  }
+
+  fdList.innerHTML = filtered.map(opt => {
+    const checked = selected.has(opt) ? 'checked' : '';
+    return `<label class="fd-item">
+      <input type="checkbox" data-opt="${escapeHtml(opt)}" ${checked}>
+      <span>${escapeHtml(opt)}</span>
+    </label>`;
+  }).join('');
+
+  fdList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) dropdownState.selected.add(cb.dataset.opt);
+      else dropdownState.selected.delete(cb.dataset.opt);
+    });
+  });
+}
+
+fdSearchInput.addEventListener('input', () => {
+  renderDropdownList(dropdownState.allOptions, dropdownState.selected, fdSearchInput.value);
+});
+
+fdClearBtn.addEventListener('click', () => {
+  dropdownState.selected = new Set(dropdownState.allOptions);
+  renderDropdownList(dropdownState.allOptions, dropdownState.selected, fdSearchInput.value);
+});
+
+fdApplyBtn.addEventListener('click', () => {
+  const key = dropdownState.columnKey;
+  if (!key) return;
+  const sel = dropdownState.selected;
+  if (sel.size === 0 || sel.size === dropdownState.allOptions.length) {
+    delete columnFilters[key];
+  } else {
+    columnFilters[key] = new Set(sel);
+  }
+  closeColumnFilter();
+  applyFilters();
+});
+
+// Fecha dropdown ao clicar fora
+document.addEventListener('click', (e) => {
+  if (!colFilterDropdown.classList.contains('open')) return;
+  if (colFilterDropdown.contains(e.target)) return;
+  if (e.target.closest && e.target.closest('.th-filter-btn')) return;
+  closeColumnFilter();
+});
+
+// Fecha ao redimensionar
+window.addEventListener('resize', closeColumnFilter);
+
+// Fecha ao rolar a JANELA — mas ignora rolagens DENTRO do dropdown
+window.addEventListener('scroll', (e) => {
+  if (!colFilterDropdown.classList.contains('open')) return;
+  if (colFilterDropdown.contains(e.target)) return;
+  closeColumnFilter();
+}, true);
+
+// Impede que o scroll dentro do dropdown propague para a janela
+colFilterDropdown.addEventListener('scroll', (e) => {
+  e.stopPropagation();
+}, true);
+colFilterDropdown.addEventListener('wheel', (e) => {
+  e.stopPropagation();
+}, { passive: true });
+
+// ===== RENDER FILTRO ATIVO =====
+function renderActiveFilter() {
+  const hasCardFilter = activeCardFilter && activeCardFilter.type !== 'total';
+  const hasBarFilter = !!activeBarFilter;
+  const hasColFilters = Object.values(columnFilters).some(s => s && s.size > 0);
+
+  if (hasCardFilter || hasBarFilter || hasColFilters) {
+    filterNotification.classList.add('visible');
+    let tags = '';
+
+    if (hasCardFilter) {
+      const labels = {
+        aprovado: 'Registros Aprovados', cadastrado: 'Registros Cadastrados',
+        prontidao: 'Prontidão de Material (BS > 0)', montagem: 'Total Montagem',
+        fabricacao: 'Total de Fabricação', recebido: 'Total de Recebido',
+        integrado: 'Total de Integrados', cancelado: 'Total de Cancelados',
+        parcial: 'Total de Parcial', transferencia: 'Transferência em Andamento'
+      };
+      tags += `<span class="tag" style="margin-right:6px;">Card: ${labels[activeCardFilter.type] || activeCardFilter.type}</span>`;
+    }
+
+    if (hasBarFilter) {
+      tags += `<span class="tag" style="margin-right:6px;">Serviço: ${activeBarFilter.length > 40 ? activeBarFilter.substring(0, 40) + '…' : activeBarFilter}</span>`;
+    }
+
+    Object.keys(columnFilters).forEach(k => {
+      const set = columnFilters[k];
+      if (!set || set.size === 0) return;
+      const col = TABLE_COLUMNS.find(c => c.key === k);
+      const label = col ? col.label : k;
+      const vals = Array.from(set).join(', ');
+      const shortVals = vals.length > 40 ? vals.substring(0, 40) + '…' : vals;
+      tags += `<span class="tag" style="margin-right:6px;">${escapeHtml(label)}: ${escapeHtml(shortVals)}</span>`;
+    });
+
+    filterTags.innerHTML = tags;
+  } else {
+    filterNotification.classList.remove('visible');
+    filterTags.innerHTML = '';
+  }
+
+  kpiCards.forEach(card => {
+    const type = card.dataset.filterType;
+    if (activeCardFilter && activeCardFilter.type === type) card.classList.add('active');
+    else card.classList.remove('active');
+  });
+}
+
+// ===== RENDER GERAL =====
+function renderDashboard() {
+  renderKPIs();
+  renderChart();
+  renderActiveFilter();
+  renderTable();
+}
+
+// ===== EVENTO CLIQUE NOS CARDS =====
+kpiCards.forEach(card => {
+  card.addEventListener('click', () => {
+    const type = card.dataset.filterType;
+    if (type === 'total') activeCardFilter = null;
+    else if (activeCardFilter && activeCardFilter.type === type) activeCardFilter = null;
+    else activeCardFilter = { type, key: card.dataset.filterKey };
+    applyFilters();
+  });
+});
+
+// ===== LIMPAR FILTROS =====
+clearCardFilterBtn.addEventListener('click', () => {
+  activeCardFilter = null;
+  activeBarFilter = null;
+  columnFilters = {};
+  closeColumnFilter();
+  applyFilters();
+});
+
+// ===== UPLOAD =====
+uploadBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      rawData = json.map((row, idx) => {
+        return {
+          A: row['Nº Registro'] ?? row['A'] ?? String(idx + 1),
+          B: row['Situação'] ?? row['B'] ?? '',
+          C: row['Descrição'] ?? row['C'] ?? '',
+          D: row['Prazo'] ?? row['D'] ?? '',
+          H: row['Serviço Padrão'] ?? row['H'] ?? '',
+          I: row['Disciplina'] ?? row['I'] ?? '',
+          AL: row['Especialidade'] ?? row['AL'] ?? '',
+          AG: row['Prioridade do Serviço'] ?? row['AG'] ?? '',
+          LM: row['Numero LM'] ?? row['BQ'] ?? '',
+          BR: row['Numero LM'] ?? row['BR'] ?? row['BQ'] ?? '',
+          BS: Number(row['prontidao'] ?? row['BS'] ?? 0) || 0,
+          BT: Number(row['Montagem'] ?? row['BT'] ?? 0) || 0,
+          BU: Number(row['fabricação'] ?? row['BU'] ?? 0) || 0,
+          BV: Number(row['Recebido'] ?? row['BV'] ?? 0) || 0,
+          BW: Number(row['Integrado'] ?? row['BW'] ?? 0) || 0,
+          BX: Number(row['Cancelado'] ?? row['BX'] ?? 0) || 0,
+          BY: Number(row['Atendido parcial'] ?? row['BY'] ?? 0) || 0,
+          BZ: Number(row['Saldo'] ?? row['BZ'] ?? 0) || 0,
+          CA: Number(row['Transferencia em verificação'] ?? row['CA'] ?? 0) || 0,
+          CC: Number(row['Transferencia em verificação'] ?? row['CC'] ?? row['CA'] ?? 0) || 0,
+          CD: row['Data Prevista'] ?? row['CD'] ?? '',
+          CE: row['Observação'] ?? row['CE'] ?? '',
+        };
+      });
+
+      activeCardFilter = null;
+      activeBarFilter = null;
+      columnFilters = {};
+      closeColumnFilter();
+      applyFilters();
+    } catch (err) {
+      alert('Erro ao ler o arquivo. Verifique se é um .xlsx válido.\n' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// ===== INICIALIZAÇÃO =====
+applyFilters();
+
+const script = document.createElement('script');
+script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+document.head.appendChild(script);
+</script>
+</body>
+</html>
